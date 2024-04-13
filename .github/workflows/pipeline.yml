@@ -1,0 +1,120 @@
+name: Deployment Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+
+env:
+  AZURE_WEBAPP_NAME: PokedexCICDLinux
+  AZURE_WEBAPP_PACKAGE_PATH: "."
+  NODE_VERSION: "20.x"
+
+jobs:
+  simple_deployment_pipeline:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: github context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+      - name: commits
+        env:
+          COMMITS: ${{ toJson(github.event.commits) }}
+        run: echo "$COMMITS"
+      - name: commit messages
+        env:
+          COMMIT_MESSAGES: ${{ toJson(github.event.commits.*.message)}}
+        run: echo "$COMMIT_MESSAGES"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Check style
+        run: npm run eslint
+
+      - name: Build Application
+        run: npm run build:ui
+
+      - name: "Deploy to Azure WebApp"
+        if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
+          package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+      - name: The job has succeeded
+        if: ${{ success() }}
+        uses: rjstone/discord-webhook-notify@v1
+        with:
+          severity: info
+          details: Succeeded!
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+      - name: The job has failed
+        if: ${{ failure() }}
+        uses: rjstone/discord-webhook-notify@v1
+        with:
+          severity: error
+          details: Failed!
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+      - name: The job has cancelled
+        if: ${{ cancelled() }}
+        uses: rjstone/discord-webhook-notify@v1
+        with:
+          severity: warn
+          details: Cancelled!
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+
+  tag_release:
+    needs: [simple_deployment_pipeline]
+    runs-on: ubuntu-20.04
+    if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip')}}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bump version and push tag
+        uses: anothrNick/github-tag-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BUMP: patch
+
+  health-check:
+    needs: [simple_deployment_pipeline]
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Check the service health
+        uses: jtalk/url-health-check-action@v4
+        with:
+          url: https://pokedexcicdlinux.azurewebsites.net/health
+          max-attempts: 3
+          retry-delay: 5s
+          retry-all: false
+      - name: Health check succeeded
+        if: ${{ success() }}
+        uses: rjstone/discord-webhook-notify@v1
+        with:
+          severity: info
+          details: Succeeded!
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+      - name: Health check has failed
+        if: ${{ failure() }}
+        uses: rjstone/discord-webhook-notify@v1
+        with:
+          severity: error
+          details: Failed!
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+      - name: Health check has cancelled
+        if: ${{ cancelled() }}
+        uses: rjstone/discord-webhook-notify@v1
+        with:
+          severity: warn
+          details: Cancelled!
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}

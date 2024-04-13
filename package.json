@@ -1,0 +1,30 @@
+{
+  "name": "phonebook",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:ui": "rm -rf dist && cd ./frontend && npm i && npm run build && cp -r dist ../",
+    "deploy:full": "npm run build:ui && git add . && git commit -m ui-build && git push",
+    "dev": "nodemon app.js",
+    "start": "node app.js",
+    "lint": "eslint ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.3",
+    "express": "^4.18.2",
+    "mongoose": "^8.1.2",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "@stylistic/eslint-plugin-js": "^1.6.1",
+    "eslint": "^8.56.0",
+    "nodemon": "^3.0.3"
+  }
+}
