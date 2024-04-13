@@ -26,5 +26,8 @@
     "@stylistic/eslint-plugin-js": "^1.6.1",
     "eslint": "^8.56.0",
     "nodemon": "^3.0.3"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.6.1"
   }
 }

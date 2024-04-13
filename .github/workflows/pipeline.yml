@@ -14,7 +14,7 @@ env:
   NODE_VERSION: "20.x"
 
 jobs:
-  simple_deployment_pipeline:
+  deployment_pipeline:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v4
@@ -42,7 +42,7 @@ jobs:
         run: npm run lint
 
       - name: Build Application
-        run: rm -rf dist && cd ./frontend && npm run build && cp -r dist ../
+        run: npm run build:ui
 
       - name: "Deploy to Azure WebApp"
         if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
@@ -75,7 +75,7 @@ jobs:
           webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
 
   tag_release:
-    needs: [simple_deployment_pipeline]
+    needs: [deployment_pipeline]
     runs-on: ubuntu-20.04
     if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip')}}
     steps:
@@ -87,7 +87,7 @@ jobs:
           DEFAULT_BUMP: patch
 
   health-check:
-    needs: [simple_deployment_pipeline]
+    needs: [deployment_pipeline]
     runs-on: ubuntu-20.04
     steps:
       - name: Check the service health
